@@ -1,18 +1,47 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse
 import database.models
 from database.models import Entry,Profile,Issues
 from database.session import db_dependency, get_db
 from database.session import engine
 from sqlalchemy.orm import Session
-from database.schema import EntryBase, ProfileBase, IssuesBase
+from database.schema import EntryBase, ProfileBase, IssuesBase, TokenRequest
 from math import radians, cos, sin, asin, sqrt
 from uuid import UUID
+from firebase_admin_setup import *
+from firebase_admin import auth
 
 
 app = FastAPI()
 
 database.models.Base.metadata.create_all(bind = engine)
+
+@app.post("/login/google")
+def google_login(data: TokenRequest, db: Session = Depends(get_db)):
+    try:
+        decoded_token = auth.verify_id_token(data.id_token)
+        email = decoded_token.get("email")
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found in token")
+
+        user = db.query(Entry).filter(Entry.email == email).first()
+
+        if not user:
+            user = Entry(email=email)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        return {
+            "message": "Login successful",
+            "uuid": str(user.uuid),
+            "email": user.email
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
+
 
 @app.post("/createProfile")
 async def createProfile(profile: ProfileBase, db: db_dependency):

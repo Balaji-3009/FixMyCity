@@ -21,3 +21,6 @@ class IssuesBase(BaseModel):
     long: float
     description: str
     status: int = 0
+
+class TokenRequest(BaseModel):
+    id_token: str
