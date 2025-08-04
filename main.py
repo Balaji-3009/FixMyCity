@@ -10,11 +10,19 @@ from math import radians, cos, sin, asin, sqrt
 from uuid import UUID
 from firebase_admin_setup import *
 from firebase_admin import auth
-
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
 database.models.Base.metadata.create_all(bind = engine)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/login/google")
 def google_login(data: TokenRequest, db: Session = Depends(get_db)):
